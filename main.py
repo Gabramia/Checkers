@@ -1,9 +1,10 @@
 import pygame
 import sys
 from board import Board
-from button import Button  # NEW: moved to button.py
+from button import Button
+from bot import make_bot_move  # NEW: bot AI
 
-# Initialize Pygame and create the window
+# Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((600, 600))
 pygame.display.set_caption("Checkers")
@@ -14,11 +15,14 @@ pygame.display.set_icon(icon)
 bg_img = pygame.image.load("assets/bg.jpg")
 title_font = pygame.font.Font("assets/fonts/PressStart2P.ttf", 50)
 
-# Game state
+# Game states
 MENU = "menu"
 GAME = "game"
 END = "end"
 state = MENU
+
+# Mode tracker
+game_mode = None  # "2player", "easy", "hard"
 
 # Buttons and board
 btn_2player = Button("2player", (300, 250))
@@ -27,14 +31,15 @@ btn_hard = Button("hard", (300, 450))
 board = None
 winner = None
 
-# Main game loop
+# Main loop
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN and state == GAME:
-            board.handle_click(event.pos)
+            if game_mode == "2player" or board.turn != "red":  # prevent human clicks when bot should play
+                board.handle_click(event.pos)
 
     screen.fill((255, 255, 255))
 
@@ -42,20 +47,30 @@ while running:
         scaled_bg = pygame.transform.scale(bg_img, (600, 600))
         screen.blit(scaled_bg, (0, 0))
         title_text = title_font.render("CHECKERS", True, (255, 255, 255))
-        title_x = (600 - title_text.get_width()) // 2
+        title_x = (screen.get_width() - title_text.get_width()) // 2
         screen.blit(title_text, (title_x, 80))
 
         if btn_2player.draw(screen):
             board = Board()
+            game_mode = "2player"
             state = GAME
-        btn_easy.draw(screen)
-        btn_hard.draw(screen)
+        elif btn_easy.draw(screen):
+            board = Board()
+            game_mode = "easy"
+            state = GAME
+        elif btn_hard.draw(screen):
+            board = Board()
+            game_mode = "hard"
+            state = GAME
 
     elif state == GAME:
         board.draw(screen)
-        winner = board.check_win()  # <- You'll add this to board.py
+        winner = board.check_win()
         if winner:
             state = END
+        elif game_mode in ("easy", "hard") and board.turn == "red":
+            pygame.time.delay(400)  # slow down bot reaction
+            make_bot_move(board, game_mode)
 
     elif state == END:
         scaled_bg = pygame.transform.scale(bg_img, (600, 600))
@@ -68,6 +83,7 @@ while running:
         state = MENU
         board = None
         winner = None
+        game_mode = None
 
     pygame.display.flip()
 
