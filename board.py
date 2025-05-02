@@ -220,3 +220,25 @@ class Board:
                     x = self.offset + col * self.square_size
                     y = self.offset + row * self.square_size
                     piece.draw(screen, x, y)
+    def check_win(self):
+        red_left = black_left = 0
+        red_moves = black_moves = 0
+
+        for row in range(self.rows):
+            for col in range(self.cols):
+                piece = self.board[row][col]
+                if piece:
+                    if piece.color == "red":
+                        red_left += 1
+                        if self.get_valid_moves(self.index_to_pos(row, col)) or self.get_all_jump_chains(self.index_to_pos(row, col)):
+                            red_moves += 1
+                    elif piece.color == "black":
+                        black_left += 1
+                        if self.get_valid_moves(self.index_to_pos(row, col)) or self.get_all_jump_chains(self.index_to_pos(row, col)):
+                            black_moves += 1
+
+        if red_left == 0 or red_moves == 0:
+            return "black"
+        elif black_left == 0 or black_moves == 0:
+            return "red"
+        return None
