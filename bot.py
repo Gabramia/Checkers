@@ -1,4 +1,3 @@
-import random
 from piece import Piece
 
 def evaluate_board(board):
@@ -61,10 +60,11 @@ def simulate_move(original_board, start_pos, path, color):
         r, c = move_r, move_c
 
     piece = board.board[r][c]
-    if piece.color == "red" and r == 7:
-        piece.make_king()
-    elif piece.color == "black" and r == 0:
-        piece.make_king()
+    if piece:
+        if piece.color == "red" and r == 7:
+            piece.make_king()
+        elif piece.color == "black" and r == 0:
+            piece.make_king()
 
     return board
 

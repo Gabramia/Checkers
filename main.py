@@ -23,6 +23,9 @@ state = MENU
 
 # Mode tracker
 game_mode = None  # "2player", "easy", "hard"
+waiting_for_bot = False
+bot_delay_timer = 0
+BOT_DELAY_MS = 600
 
 # Buttons and board
 btn_2player = Button("2player", (300, 250))
@@ -33,7 +36,10 @@ winner = None
 
 # Main loop
 running = True
+clock = pygame.time.Clock()
 while running:
+    dt = clock.tick(60)
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -65,12 +71,37 @@ while running:
 
     elif state == GAME:
         board.draw(screen)
+
+        # Check for winner
         winner = board.check_win()
         if winner:
             state = END
-        elif game_mode in ("easy", "hard") and board.turn == "red":
-            pygame.time.delay(400)  # slow down bot reaction
-            make_bot_move(board, game_mode)
+            continue
+
+        # Check if bot has valid moves
+        if game_mode in ("easy", "hard") and board.turn == "red":
+            jumpables = board.get_all_jumpable_positions("red")
+            any_valid = False
+            for row in range(board.rows):
+                for col in range(board.cols):
+                    piece = board.board[row][col]
+                    if piece and piece.color == "red":
+                        pos = board.index_to_pos(row, col)
+                        if board.get_valid_moves(pos) or board.get_all_jump_chains(pos):
+                            any_valid = True
+            if not any_valid:
+                winner = "black"
+                state = END
+                continue
+
+            if not waiting_for_bot:
+                waiting_for_bot = True
+                bot_delay_timer = 0
+            else:
+                bot_delay_timer += dt
+                if bot_delay_timer >= BOT_DELAY_MS:
+                    make_bot_move(board, game_mode)
+                    waiting_for_bot = False
 
     elif state == END:
         scaled_bg = pygame.transform.scale(bg_img, (600, 600))
@@ -84,6 +115,7 @@ while running:
         board = None
         winner = None
         game_mode = None
+        waiting_for_bot = False
 
     pygame.display.flip()
 
