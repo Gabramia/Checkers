@@ -21,14 +21,21 @@ class Board:
         self.board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
         self._place_pieces()
 
+    
+    
     def pos_to_index(self, pos):
         col = ord(pos[0].upper()) - ord('A')
         row = 8 - int(pos[1])
         return row, col
 
+    
+    
     def index_to_pos(self, row, col):
         return chr(col + ord('A')) + str(8 - row)
 
+    
+    
+    
     def _place_pieces(self):
         for row in range(self.rows):
             for col in range(self.cols):
@@ -38,6 +45,8 @@ class Board:
                     elif row > 4:
                         self.board[row][col] = Piece("black")
 
+    
+    
     def get_square_under_mouse(self, pos):
         mx, my = pos
         col = (mx - self.offset) // self.square_size
@@ -46,6 +55,9 @@ class Board:
             return self.index_to_pos(row, col)
         return None
 
+    
+    
+    
     def get_all_jump_chains(self, square):
         row, col = self.pos_to_index(square)
         piece = self.board[row][col]
@@ -78,6 +90,8 @@ class Board:
         recurse(row, col, [], set())
         return chains
 
+    
+    
     def get_all_jumpable_positions(self, color):
         options = {}
         for row in range(self.rows):
@@ -90,6 +104,9 @@ class Board:
                         options[pos] = chains
         return options
 
+    
+    
+    
     def get_valid_moves(self, square):
         moves = []
         row, col = self.pos_to_index(square)
@@ -107,6 +124,9 @@ class Board:
                 moves.append(self.index_to_pos(r, c))
         return moves
 
+    
+    
+    
     def handle_click(self, pos):
         square = self.get_square_under_mouse(pos)
         if square is None:
@@ -186,6 +206,8 @@ class Board:
                     self.valid_moves = self.get_valid_moves(square)
                     self.valid_jump_paths = []
 
+    
+    
     def draw(self, screen):
         screen.blit(self.board_img, (0, 0))
 
@@ -220,6 +242,11 @@ class Board:
                     x = self.offset + col * self.square_size
                     y = self.offset + row * self.square_size
                     piece.draw(screen, x, y)
+    
+    
+    
+    
+    
     def check_win(self):
         red_left = black_left = 0
         red_moves = black_moves = 0
