@@ -38,77 +38,21 @@ class Board:
                     elif row > 4:
                         self.board[row][col] = Piece("black")
 
-    def get_square_under_mouse(self, pos):
+    def get_square_under_mouse(self, pos, game_mode=None):
         mx, my = pos
         col = (mx - self.offset) // self.square_size
         row = (my - self.offset) // self.square_size
+
+        if game_mode == "2player" and self.turn == "red":
+            row = 7 - row
+            col = 7 - col
+
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return self.index_to_pos(row, col)
         return None
 
-    def get_all_jump_chains(self, square):
-        row, col = self.pos_to_index(square)
-        piece = self.board[row][col]
-        chains = []
-
-        def recurse(r, c, path, visited):
-            found = False
-            directions = [(1, -1), (1, 1)] if piece.color == "red" else [(-1, -1), (-1, 1)]
-            if piece.is_king:
-                directions += [(-d[0], -d[1]) for d in directions]
-
-            for dr, dc in directions:
-                mid_r, mid_c = r + dr, c + dc
-                jump_r, jump_c = r + dr * 2, c + dc * 2
-                if (0 <= jump_r < self.rows and 0 <= jump_c < self.cols and
-                    (jump_r, jump_c) not in visited and
-                    self.board[jump_r][jump_c] is None and
-                    self.board[mid_r][mid_c] and
-                    self.board[mid_r][mid_c].color != piece.color):
-                    found = True
-                    recurse(jump_r, jump_c, path + [(jump_r, jump_c)], visited | {(jump_r, jump_c)})
-
-            if not found and path:
-                end_pos = self.index_to_pos(path[-1][0], path[-1][1])
-                chains.append({
-                    "end": end_pos,
-                    "path": path
-                })
-
-        recurse(row, col, [], set())
-        return chains
-
-    def get_all_jumpable_positions(self, color):
-        options = {}
-        for row in range(self.rows):
-            for col in range(self.cols):
-                piece = self.board[row][col]
-                if piece and piece.color == color:
-                    pos = self.index_to_pos(row, col)
-                    chains = self.get_all_jump_chains(pos)
-                    if chains:
-                        options[pos] = chains
-        return options
-
-    def get_valid_moves(self, square):
-        moves = []
-        row, col = self.pos_to_index(square)
-        piece = self.board[row][col]
-        if not piece:
-            return moves
-
-        directions = [(1, -1), (1, 1)] if piece.color == "red" else [(-1, -1), (-1, 1)]
-        if piece.is_king:
-            directions += [(-d[0], -d[1]) for d in directions]
-
-        for dr, dc in directions:
-            r, c = row + dr, col + dc
-            if 0 <= r < self.rows and 0 <= c < self.cols and self.board[r][c] is None:
-                moves.append(self.index_to_pos(r, c))
-        return moves
-
-    def handle_click(self, pos):
-        square = self.get_square_under_mouse(pos)
+    def handle_click(self, pos, game_mode=None):
+        square = self.get_square_under_mouse(pos, game_mode)
         if square is None:
             return
 
@@ -122,7 +66,6 @@ class Board:
                 sel_row, sel_col = self.pos_to_index(self.selected_square)
                 selected_piece = self.board[sel_row][sel_col]
 
-                # Handle jump path if selected from chains
                 selected_path = None
                 for chain in self.valid_jump_paths:
                     if chain["end"] == square:
@@ -186,29 +129,96 @@ class Board:
                     self.valid_moves = self.get_valid_moves(square)
                     self.valid_jump_paths = []
 
-    def draw(self, screen):
+    def get_all_jump_chains(self, square):
+        row, col = self.pos_to_index(square)
+        piece = self.board[row][col]
+        chains = []
+
+        def recurse(r, c, path, visited):
+            found = False
+            directions = [(1, -1), (1, 1)] if piece.color == "red" else [(-1, -1), (-1, 1)]
+            if piece.is_king:
+                directions += [(-d[0], -d[1]) for d in directions]
+
+            for dr, dc in directions:
+                mid_r, mid_c = r + dr, c + dc
+                jump_r, jump_c = r + dr * 2, c + dc * 2
+                if (0 <= jump_r < self.rows and 0 <= jump_c < self.cols and
+                    (jump_r, jump_c) not in visited and
+                    self.board[jump_r][jump_c] is None and
+                    self.board[mid_r][mid_c] and
+                    self.board[mid_r][mid_c].color != piece.color):
+                    found = True
+                    recurse(jump_r, jump_c, path + [(jump_r, jump_c)], visited | {(jump_r, jump_c)})
+
+            if not found and path:
+                end_pos = self.index_to_pos(path[-1][0], path[-1][1])
+                chains.append({
+                    "end": end_pos,
+                    "path": path
+                })
+
+        recurse(row, col, [], set())
+        return chains
+
+    def get_all_jumpable_positions(self, color):
+        options = {}
+        for row in range(self.rows):
+            for col in range(self.cols):
+                piece = self.board[row][col]
+                if piece and piece.color == color:
+                    pos = self.index_to_pos(row, col)
+                    chains = self.get_all_jump_chains(pos)
+                    if chains:
+                        options[pos] = chains
+        return options
+
+    def get_valid_moves(self, square):
+        moves = []
+        row, col = self.pos_to_index(square)
+        piece = self.board[row][col]
+        if not piece:
+            return moves
+
+        directions = [(1, -1), (1, 1)] if piece.color == "red" else [(-1, -1), (-1, 1)]
+        if piece.is_king:
+            directions += [(-d[0], -d[1]) for d in directions]
+
+        for dr, dc in directions:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.rows and 0 <= c < self.cols and self.board[r][c] is None:
+                moves.append(self.index_to_pos(r, c))
+        return moves
+
+    def draw(self, screen, game_mode):
         screen.blit(self.board_img, (0, 0))
 
         for i in range(self.rows):
-            label = self.font.render(str(8 - i), True, (0, 0, 0))
+            label = self.font.render(str(i+1) if game_mode == '2player' and self.turn == 'red' else str(8 - i), True, (0, 0, 0))
             y = self.offset + i * self.square_size + self.square_size // 2 - label.get_height() // 2
             screen.blit(label, (10, y))
             screen.blit(label, (600 - 25, y))
 
         for j in range(self.cols):
-            label = self.font.render(chr(ord('A') + j), True, (0, 0, 0))
+            label = self.font.render(chr(ord('H') - j) if game_mode == '2player' and self.turn == 'red' else chr(ord('A') + j), True, (0, 0, 0))
             x = self.offset + j * self.square_size + self.square_size // 2 - label.get_width() // 2
             screen.blit(label, (x, 10))
             screen.blit(label, (x, 600 - 25))
 
         if self.selected_square:
             row, col = self.pos_to_index(self.selected_square)
+            if game_mode == '2player' and self.turn == 'red':
+                row = 7 - row
+                col = 7 - col
             x = self.offset + col * self.square_size
             y = self.offset + row * self.square_size
             pygame.draw.rect(screen, (255, 255, 0), (x, y, self.square_size, self.square_size), 3)
 
         for pos in self.valid_moves:
             row, col = self.pos_to_index(pos)
+            if game_mode == '2player' and self.turn == 'red':
+                row = 7 - row
+                col = 7 - col
             x = self.offset + col * self.square_size + (self.square_size - self.move_circle.get_width()) // 2
             y = self.offset + row * self.square_size + (self.square_size - self.move_circle.get_height()) // 2
             screen.blit(self.move_circle, (x, y))
@@ -217,6 +227,32 @@ class Board:
             for col in range(self.cols):
                 piece = self.board[row][col]
                 if piece:
-                    x = self.offset + col * self.square_size
-                    y = self.offset + row * self.square_size
+                    draw_row = 7 - row if game_mode == '2player' and self.turn == 'red' else row
+                    draw_col = 7 - col if game_mode == '2player' and self.turn == 'red' else col
+                    x = self.offset + draw_col * self.square_size
+                    y = self.offset + draw_row * self.square_size
                     piece.draw(screen, x, y)
+
+    def check_win(self):
+        red_left = black_left = 0
+        red_moves = black_moves = 0
+
+        for row in range(self.rows):
+            for col in range(self.cols):
+                piece = self.board[row][col]
+                if piece:
+                    pos = self.index_to_pos(row, col)
+                    if piece.color == "red":
+                        red_left += 1
+                        if self.get_valid_moves(pos) or self.get_all_jump_chains(pos):
+                            red_moves += 1
+                    elif piece.color == "black":
+                        black_left += 1
+                        if self.get_valid_moves(pos) or self.get_all_jump_chains(pos):
+                            black_moves += 1
+
+        if red_left == 0 or red_moves == 0:
+            return "black"
+        elif black_left == 0 or black_moves == 0:
+            return "red"
+        return None
