@@ -45,7 +45,7 @@ while running:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN and state == GAME:
             if game_mode == "2player" or board.turn != "red":  # prevent human clicks when bot should play
-                board.handle_click(event.pos)
+                board.handle_click(event.pos,game_mode)
 
     screen.fill((255, 255, 255))
 
