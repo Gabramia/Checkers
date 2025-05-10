@@ -1,6 +1,6 @@
 import pygame
 import os
-from piece import Piece  # Import your Piece class
+from piece import Piece
 
 class Board:
     def __init__(self):
@@ -13,13 +13,16 @@ class Board:
         self.move_circle = pygame.image.load(os.path.join("assets", "possible_move.png"))
 
         self.font = pygame.font.SysFont("arial", 20)
-        self.selected_square = None  # Stores "C3"-style string
-        self.valid_moves = []  # List of target squares (hashed)
-        self.valid_jump_paths = []  # List of possible multiple kills
-        self.turn = "black"  # Tracks whose turn it is
+        self.selected_square = None
+        self.valid_moves = []
+        self.valid_jump_paths = []
+        self.turn = "black"
 
         self.board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
         self._place_pieces()
+
+
+        
 
     def pos_to_index(self, pos):
         col = ord(pos[0].upper()) - ord('A')
@@ -38,12 +41,12 @@ class Board:
                     elif row > 4:
                         self.board[row][col] = Piece("black")
 
-    def get_square_under_mouse(self, pos, game_mode=None):
+    def get_square_under_mouse(self, pos, game_mode=None, player_color=None):
         mx, my = pos
         col = (mx - self.offset) // self.square_size
         row = (my - self.offset) // self.square_size
 
-        if game_mode == "2player" and self.turn == "red":
+        if (game_mode == "2player" and self.turn == "red") or (game_mode in ("easy", "hard") and player_color == "red"):
             row = 7 - row
             col = 7 - col
 
@@ -51,8 +54,8 @@ class Board:
             return self.index_to_pos(row, col)
         return None
 
-    def handle_click(self, pos, game_mode=None):
-        square = self.get_square_under_mouse(pos, game_mode)
+    def handle_click(self, pos, game_mode=None, player_color=None):
+        square = self.get_square_under_mouse(pos, game_mode, player_color)
         if square is None:
             return
 
@@ -190,24 +193,26 @@ class Board:
                 moves.append(self.index_to_pos(r, c))
         return moves
 
-    def draw(self, screen, game_mode):
+    def draw(self, screen, game_mode=None, flip_board=None, player_color=None):
+        if flip_board is None:
+            flip_board = (game_mode == '2player' and self.turn == 'red') or (game_mode in ("easy", "hard") and player_color == 'red')
         screen.blit(self.board_img, (0, 0))
 
         for i in range(self.rows):
-            label = self.font.render(str(i+1) if game_mode == '2player' and self.turn == 'red' else str(8 - i), True, (0, 0, 0))
+            label = self.font.render(str(i+1) if flip_board else str(8 - i), True, (0, 0, 0))
             y = self.offset + i * self.square_size + self.square_size // 2 - label.get_height() // 2
             screen.blit(label, (10, y))
             screen.blit(label, (600 - 25, y))
 
         for j in range(self.cols):
-            label = self.font.render(chr(ord('H') - j) if game_mode == '2player' and self.turn == 'red' else chr(ord('A') + j), True, (0, 0, 0))
+            label = self.font.render(chr(ord('H') - j) if flip_board else chr(ord('A') + j), True, (0, 0, 0))
             x = self.offset + j * self.square_size + self.square_size // 2 - label.get_width() // 2
             screen.blit(label, (x, 10))
             screen.blit(label, (x, 600 - 25))
 
         if self.selected_square:
             row, col = self.pos_to_index(self.selected_square)
-            if game_mode == '2player' and self.turn == 'red':
+            if flip_board:
                 row = 7 - row
                 col = 7 - col
             x = self.offset + col * self.square_size
@@ -216,7 +221,7 @@ class Board:
 
         for pos in self.valid_moves:
             row, col = self.pos_to_index(pos)
-            if game_mode == '2player' and self.turn == 'red':
+            if flip_board:
                 row = 7 - row
                 col = 7 - col
             x = self.offset + col * self.square_size + (self.square_size - self.move_circle.get_width()) // 2
@@ -227,8 +232,8 @@ class Board:
             for col in range(self.cols):
                 piece = self.board[row][col]
                 if piece:
-                    draw_row = 7 - row if game_mode == '2player' and self.turn == 'red' else row
-                    draw_col = 7 - col if game_mode == '2player' and self.turn == 'red' else col
+                    draw_row = 7 - row if flip_board else row
+                    draw_col = 7 - col if flip_board else col
                     x = self.offset + draw_col * self.square_size
                     y = self.offset + draw_row * self.square_size
                     piece.draw(screen, x, y)
