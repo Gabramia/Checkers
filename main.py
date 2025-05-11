@@ -13,12 +13,19 @@ icon = pygame.image.load("assets/black_king.png")
 pygame.display.set_icon(icon)
 
 # Load background and font
+black_king_icon = pygame.image.load("assets/black_king.png")
+red_king_icon = pygame.image.load("assets/red_king.png")
 bg_img = pygame.image.load("assets/bg.jpg")
 title_font = pygame.font.Font("assets/fonts/PressStart2P.ttf", 50)
 input_font = pygame.font.SysFont("arial", 24)
+back_label = input_font.render("Back", True, (0, 0, 0))
+back_rect = back_label.get_rect(bottomright=(590, 25))
+
+
 
 # Game states
 MENU = "menu"
+REPLAY_MENU = "replay_menu""menu"
 SIDE_SELECT = "side_select"
 GAME = "game"
 END = "end"
@@ -41,6 +48,11 @@ name_red = ""
 active_input = None
 
 # Buttons and board
+btn_replay_left = Button("arrow_left", (30, 300))
+btn_replay_right = Button("arrow_right", (570, 300))
+replay_files = []
+replay_page = 0
+replay_data = []
 btn_2player = Button("2player", (300, 250))
 btn_easy = Button("easy", (300, 350))
 btn_hard = Button("hard", (300, 450))
@@ -64,7 +76,12 @@ while running:
         title_text = title_font.render("CHECKERS", True, (255, 255, 255))
         screen.blit(title_text, ((600 - title_text.get_width()) // 2, 80))
 
+
+
         if btn_2player.draw(screen):
+            game_mode = "2player"
+            state = NAME_INPUT
+        
             game_mode = "2player"
             state = NAME_INPUT
         elif btn_easy.draw(screen):
@@ -75,9 +92,18 @@ while running:
             selected_mode = "hard"
             game_mode = selected_mode
             state = NAME_INPUT
+        history_label = input_font.render("History", True, (255, 255, 255))
+        history_rect = history_label.get_rect(bottomright=(590, 590))
+        screen.blit(history_label, history_rect)
+        if pygame.mouse.get_pressed()[0] and history_rect.collidepoint(pygame.mouse.get_pos()):
+            state = REPLAY_MENU
 
     elif state == NAME_INPUT:
         screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
+        screen.blit(back_label, back_rect)
+        if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
+            state = MENU
+            continue
 
         if game_mode == "2player":
             blk_label = input_font.render("BLACK:", True, (0, 0, 0))
@@ -109,7 +135,7 @@ while running:
                     board.turn = "black"
                     game_mode = selected_mode
                     recorder = MatchRecorder()
-                    recorder.set_players(name_black, "BOT")
+                    recorder.set_players(name_black, selected_mode.upper())
                     state = GAME
                 elif black_clicked:
                     player_color = "black"
@@ -121,6 +147,7 @@ while running:
                     state = GAME
 
     elif state == GAME:
+
         if pending_flip:
             flip = not ((game_mode == '2player' and board.turn == 'red') or (game_mode in ('easy', 'hard') and player_color == 'red'))
             board.draw(screen, game_mode, flip_board=flip)
@@ -152,14 +179,79 @@ while running:
                         end_square = board.valid_moves[0]
                         recorder.record_move(before, end_square)
                     waiting_for_bot = False
+        screen.blit(back_label, back_rect)
+        if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
+            state = MENU
+            continue
+
+
+
+    elif state == REPLAY_MENU:
+        screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
+        title_font_big = pygame.font.SysFont("arial", 32, bold=True)
+        title = title_font_big.render("Replays", True, (0, 0, 0))
+        screen.blit(title, (230, 10))  # Top spacing
+        screen.blit(back_label, back_rect)
+        if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
+            state = MENU
+            continue
+
+        import os, json
+        if not replay_files:
+            replay_files[:] = sorted(os.listdir("replays"), reverse=True)
+            replay_files = [f for f in replay_files if f.endswith(".json")]
+
+        box_height = 110
+        top_margin = 50
+        vertical_gap = 15  # Increased spacing between boxes
+        max_display = 4
+
+        for i in range(max_display):
+            idx = replay_page * max_display + i
+            if idx >= len(replay_files):
+                break
+
+            file = replay_files[idx]
+            with open(os.path.join("replays", file), "r") as f:
+                data = json.load(f)
+
+            black = data["player_black"]
+            if black.upper() == "BOT":
+                black = "EASY" if "easy" in file.lower() else "HARD"
+            red = data["player_red"]
+            if red.upper() == "BOT":
+                red = "EASY" if "easy" in file.lower() else "HARD"
+            winner = data["winner"]
+            date = file.split("_")[0] + " " + file.split("_")[1].replace("-", ":")
+
+            y_offset = top_margin + i * (box_height + vertical_gap)
+            pygame.draw.rect(screen, (255, 255, 255), (70, y_offset, 460, box_height))
+
+            # Black Side (Left)
+            screen.blit(black_king_icon, (80, y_offset + 10))
+            screen.blit(input_font.render(black, True, (0, 0, 0)), (90, y_offset + 75))  # 10px inside box edge
+
+            # Red Side (Right)
+            red_icon_x = 470
+            red_text_x = 470 + 50 - input_font.size(red)[0]  # So name ends before box edge
+            screen.blit(red_king_icon, (red_icon_x, y_offset + 10))
+            screen.blit(input_font.render(red, True, (0, 0, 0)), (red_text_x, y_offset + 75))
+
+            # Center info
+            screen.blit(input_font.render(date, True, (0, 0, 0)), (230, y_offset + 10))
+            screen.blit(input_font.render("Winner is:", True, (0, 0, 0)), (245, y_offset + 40))
+            winner_font = pygame.font.SysFont("arial", 28, bold=True)
+            screen.blit(winner_font.render(winner.upper(), True, (0, 0, 0)), (245, y_offset + 65))
+
+        # Arrows and Page Number
+        btn_replay_left.draw(screen)
+        btn_replay_right.draw(screen)
+        page_label = input_font.render(f"PAGE: [{replay_page + 1}]", True, (255, 200, 0))
+        screen.blit(page_label, (240, 570))
+
+
 
     elif state == END:
-        screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
-        msg = f"{winner.upper()} WINS!"
-        end_text = title_font.render(msg, True, (255, 255, 255))
-        screen.blit(end_text, (50, 260))
-        pygame.display.flip()
-        pygame.time.delay(3000)
         state = MENU
         board = None
         winner = None
