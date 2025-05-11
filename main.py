@@ -19,7 +19,7 @@ bg_img = pygame.image.load("assets/bg.jpg")
 title_font = pygame.font.Font("assets/fonts/PressStart2P.ttf", 50)
 input_font = pygame.font.SysFont("arial", 24)
 back_label = input_font.render("Back", True, (0, 0, 0))
-back_rect = back_label.get_rect(bottomright=(590, 25))
+back_rect = back_label.get_rect(topright=(590, 10))
 
 
 
@@ -103,7 +103,11 @@ while running:
         screen.blit(back_label, back_rect)
         if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
             state = MENU
+            name_black = ""
+            name_red = ""
+            active_input = None
             continue
+
 
         if game_mode == "2player":
             blk_label = input_font.render("BLACK:", True, (0, 0, 0))
@@ -182,7 +186,11 @@ while running:
         screen.blit(back_label, back_rect)
         if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
             state = MENU
+            name_black = ""
+            name_red = ""
+            active_input = None
             continue
+
 
 
 
@@ -194,7 +202,11 @@ while running:
         screen.blit(back_label, back_rect)
         if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
             state = MENU
+            name_black = ""
+            name_red = ""
+            active_input = None
             continue
+
 
         import os, json
         if not replay_files:
@@ -232,7 +244,7 @@ while running:
             screen.blit(input_font.render(black, True, (0, 0, 0)), (90, y_offset + 75))  # 10px inside box edge
 
             # Red Side (Right)
-            red_icon_x = 470
+            red_icon_x = 460
             red_text_x = 470 + 50 - input_font.size(red)[0]  # So name ends before box edge
             screen.blit(red_king_icon, (red_icon_x, y_offset + 10))
             screen.blit(input_font.render(red, True, (0, 0, 0)), (red_text_x, y_offset + 75))
@@ -244,8 +256,14 @@ while running:
             screen.blit(winner_font.render(winner.upper(), True, (0, 0, 0)), (245, y_offset + 65))
 
         # Arrows and Page Number
-        btn_replay_left.draw(screen)
-        btn_replay_right.draw(screen)
+        if btn_replay_left.draw(screen):
+            if replay_page > 0:
+                replay_page -= 1
+
+        if btn_replay_right.draw(screen):
+            max_page = (len(replay_files) - 1) // 4
+            if replay_page < max_page:
+                replay_page += 1
         page_label = input_font.render(f"PAGE: [{replay_page + 1}]", True, (255, 200, 0))
         screen.blit(page_label, (240, 570))
 
@@ -283,14 +301,14 @@ while running:
                     board.handle_click(event.pos, game_mode, player_color)
                     if recorder and last_selected and not board.selected_square:
                         target = board.get_square_under_mouse(event.pos, game_mode, player_color)
-                        if target:
+                        if target and target != last_selected:
                             recorder.record_move(last_selected, target)
-                        if game_mode == "2player":
-                            pending_flip = True
-                            flip_pause_timer = FLIP_PAUSE_MS
-                        target = board.get_square_under_mouse(event.pos, game_mode, player_color)
-                        if target:
-                            recorder.record_move(last_selected, target)
+                            if game_mode == "2player":
+                                pending_flip = True
+                                flip_pause_timer = FLIP_PAUSE_MS
+                            target = board.get_square_under_mouse(event.pos, game_mode, player_color)
+                            if target:
+                                    recorder.record_move(last_selected, target)
             elif state == NAME_INPUT:
                 mx, my = pygame.mouse.get_pos()
                 if game_mode == "2player":
