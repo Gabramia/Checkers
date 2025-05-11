@@ -32,8 +32,10 @@ player_color = "black"
 waiting_for_bot = False
 bot_delay_timer = 0
 BOT_DELAY_MS = 600
+flip_pause_timer = 0
+FLIP_PAUSE_MS = 300
+pending_flip = False
 
-# Input trackers
 name_black = ""
 name_red = ""
 active_input = None
@@ -119,8 +121,15 @@ while running:
                     state = GAME
 
     elif state == GAME:
-        flip = (game_mode == '2player' and board.turn == 'red') or (game_mode in ('easy', 'hard') and player_color == 'red')
-        board.draw(screen, game_mode, flip_board=flip)
+        if pending_flip:
+            flip = not ((game_mode == '2player' and board.turn == 'red') or (game_mode in ('easy', 'hard') and player_color == 'red'))
+            board.draw(screen, game_mode, flip_board=flip)
+            flip_pause_timer -= dt
+            if flip_pause_timer <= 0:
+                pending_flip = False
+        else:
+            flip = (game_mode == '2player' and board.turn == 'red') or (game_mode in ('easy', 'hard') and player_color == 'red')
+            board.draw(screen, game_mode, flip_board=flip)
 
         winner = board.check_win()
         if winner:
@@ -181,6 +190,12 @@ while running:
                     last_selected = board.selected_square
                     board.handle_click(event.pos, game_mode, player_color)
                     if recorder and last_selected and not board.selected_square:
+                        target = board.get_square_under_mouse(event.pos, game_mode, player_color)
+                        if target:
+                            recorder.record_move(last_selected, target)
+                        if game_mode == "2player":
+                            pending_flip = True
+                            flip_pause_timer = FLIP_PAUSE_MS
                         target = board.get_square_under_mouse(event.pos, game_mode, player_color)
                         if target:
                             recorder.record_move(last_selected, target)
