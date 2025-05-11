@@ -94,17 +94,28 @@ def minimax(board, depth, maximizing, color):
                 best_move = move
         return min_eval, best_move
 
+import random
+
 def make_bot_move(board, difficulty):
     depth = 2 if difficulty == "easy" else 5
     _, best_move = minimax(board, depth, True, board.turn)
-    if best_move:
-        board.selected_square = best_move[0]
-        board.valid_jump_paths = [{"end": board.index_to_pos(*best_move[1][-1]), "path": best_move[1]}]
-        board.valid_moves = [board.index_to_pos(*best_move[1][-1])]
 
-        # Convert move target to pixel coordinates for handle_click
-        end_square = board.valid_moves[0]
-        row, col = board.pos_to_index(end_square)
-        x = board.offset + col * board.square_size + board.square_size // 2
-        y = board.offset + row * board.square_size + board.square_size // 2
-        board.handle_click((x, y))
+    # Fallback: pick a random valid move if minimax fails
+    if not best_move:
+        all_moves, _ = get_all_moves(board, board.turn)
+        if all_moves:
+            best_move = random.choice(all_moves)
+        else:
+            return  # No moves at all — game over
+
+    board.selected_square = best_move[0]
+    board.valid_jump_paths = [{"end": board.index_to_pos(*best_move[1][-1]), "path": best_move[1]}]
+    board.valid_moves = [board.index_to_pos(*best_move[1][-1])]
+
+    # Convert move target to pixel coordinates for handle_click
+    end_square = board.valid_moves[0]
+    row, col = board.pos_to_index(end_square)
+    x = board.offset + col * board.square_size + board.square_size // 2
+    y = board.offset + row * board.square_size + board.square_size // 2
+    board.handle_click((x, y))
+
