@@ -52,6 +52,7 @@ btn_replay_left = Button("arrow_left", (30, 300))
 btn_replay_right = Button("arrow_right", (570, 300))
 replay_files = []
 replay_page = 0
+just_entered_history = True
 replay_data = []
 btn_2player = Button("2player", (300, 250))
 btn_easy = Button("easy", (300, 350))
@@ -97,6 +98,8 @@ while running:
         screen.blit(history_label, history_rect)
         if pygame.mouse.get_pressed()[0] and history_rect.collidepoint(pygame.mouse.get_pos()):
             state = REPLAY_MENU
+            just_entered_history = True
+
 
     elif state == NAME_INPUT:
         screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
@@ -209,9 +212,11 @@ while running:
 
 
         import os, json
-        if not replay_files:
-            replay_files[:] = sorted(os.listdir("replays"), reverse=True)
+        if just_entered_history:
+            replay_files = sorted(os.listdir("replays"), reverse=True)
             replay_files = [f for f in replay_files if f.endswith(".json")]
+            just_entered_history = False
+
 
         box_height = 110
         top_margin = 50

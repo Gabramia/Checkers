@@ -202,12 +202,12 @@ class Board:
             label = self.font.render(str(i+1) if flip_board else str(8 - i), True, (0, 0, 0))
             y = self.offset + i * self.square_size + self.square_size // 2 - label.get_height() // 2
             screen.blit(label, (10, y))
-            screen.blit(label, (600 - 25, y))
+            #screen.blit(label, (600 - 25, y))
 
         for j in range(self.cols):
             label = self.font.render(chr(ord('H') - j) if flip_board else chr(ord('A') + j), True, (0, 0, 0))
             x = self.offset + j * self.square_size + self.square_size // 2 - label.get_width() // 2
-            screen.blit(label, (x, 10))
+            #screen.blit(label, (x, 10))
             screen.blit(label, (x, 600 - 25))
 
         if self.selected_square:
