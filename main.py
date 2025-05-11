@@ -64,8 +64,8 @@ btn_easy = Button("easy", (300, 350))
 btn_hard = Button("hard", (300, 450))
 btn_red = Button("red", (300, 370))
 btn_black = Button("black", (300, 470))
-btn_replay_step_left = Button("arrow_left", (550, 250)) 
-btn_replay_step_right = Button("arrow_right", (550, 320)) 
+btn_step_back = Button("arrow_small_left", (0, 0))
+btn_step_forward = Button("arrow_small_right", (0, 0))
 board = None
 winner = None
 recorder = None
@@ -281,9 +281,14 @@ while running:
             if pygame.mouse.get_pressed()[0] and box_rect.collidepoint(pygame.mouse.get_pos()):
                 with open(os.path.join("replays", file), "r") as f:
                     replay_data = json.load(f)
-                replay_flip_board = False
-                if replay_data["player_red"].upper() != "BOT":
-                    replay_flip_board = True
+                # Determine if red should be on bottom or top
+                is_2player = "BOT" not in [replay_data["player_black"].upper(), replay_data["player_red"].upper()]
+                if is_2player:
+                    replay_flip_board = False  # Red starts on top in 2p, flip to always black on bottom
+                else:
+                    # Bot match: flip if red was the player (BOT was black)
+                    replay_flip_board = replay_data["player_red"].upper() == replay_data.get("player_name", "").upper()
+
 
                 replay_index = 0
                 last_replay_page = replay_page
@@ -307,18 +312,18 @@ while running:
 
 
     elif state == REPLAY_VIEWER:
-        # Apply replay moves up to current index
         board = Board()
         unique_moves = []
         for move in replay_data["moves"]:
             if not unique_moves or unique_moves[-1] != move:
                 unique_moves.append(move)
 
+        # Apply moves up to current index
         for i in range(replay_index):
             move = unique_moves[i]
             start, end = move.split("-")
-            sr, sc = board.pos_to_index(start)
-            er, ec = board.pos_to_index(end)
+            sr, sc = board.pos_to_index(start, flip_board=replay_flip_board)
+            er, ec = board.pos_to_index(end, flip_board=replay_flip_board)
 
             piece = board.board[sr][sc]
             if not piece:
@@ -326,7 +331,7 @@ while running:
 
             board.board[sr][sc] = None
 
-            # Handle jumps
+            # Handle jump
             if abs(sr - er) == 2:
                 mid_r = (sr + er) // 2
                 mid_c = (sc + ec) // 2
@@ -343,9 +348,8 @@ while running:
         board.valid_moves = []
         board.valid_jump_paths = []
 
-        # Draw board first
+        # Draw the board
         board.draw(screen, game_mode="replay", flip_board=replay_flip_board)
-
 
         # MENU (top-left)
         menu_label = input_font.render("MENU", True, (0, 0, 0))
@@ -363,31 +367,61 @@ while running:
             state = REPLAY_MENU
             replay_page = last_replay_page
             just_entered_history = True
+            pygame.event.clear(pygame.MOUSEBUTTONDOWN)
+            pygame.time.wait(100)
             continue
 
-        # Arrows (right side of board)
-        if btn_replay_step_right.draw(screen):
-            if replay_index < len(unique_moves):
-                replay_index += 1
+        # Reposition and draw scaled arrows at top center (no space from edge)
+        btn_step_back.rect.center = (270, 20)
+        btn_step_forward.rect.center = (330, 20)
 
-        if btn_replay_step_left.draw(screen):
+        if btn_step_back.draw(screen):
             if replay_index > 0:
                 replay_index -= 1
 
-
+        if btn_step_forward.draw(screen):
+            if replay_index < len(unique_moves):
+                replay_index += 1
 
 
 
     elif state == END:
-        state = MENU
-        board = None
-        winner = None
-        game_mode = None
-        selected_mode = None
-        waiting_for_bot = False
-        name_black = ""
-        name_red = ""
-        active_input = None
+        screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
+
+        # Safely get winner name from recorder
+        if recorder:
+            winner_name = recorder.player_black if winner == "black" else recorder.player_red
+        else:
+            winner_name = winner.upper()
+
+        # Render WINNER title and name
+        winner_label = title_font.render("WINNER:", True, (0, 0, 0))
+        winner_name_label = title_font.render(winner_name.upper(), True, (255, 0, 0))
+
+        screen.blit(winner_label, ((600 - winner_label.get_width()) // 2, 180))
+        screen.blit(winner_name_label, ((600 - winner_name_label.get_width()) // 2, 250))
+
+        # Return to menu button
+        pygame.draw.rect(screen, (0, 200, 0), (200, 350, 200, 50))
+        menu_label = input_font.render("RETURN TO MENU", True, (255, 255, 255))
+        screen.blit(menu_label, ((600 - menu_label.get_width()) // 2, 365))
+
+        mx, my = pygame.mouse.get_pos()
+        if pygame.mouse.get_pressed()[0] and 200 < mx < 400 and 350 < my < 400:
+            state = MENU
+            board = None
+            winner = None
+            game_mode = None
+            selected_mode = None
+            waiting_for_bot = False
+            name_black = ""
+            name_red = ""
+            active_input = None
+            replay_data = None
+            recorder = None
+            pygame.event.clear(pygame.MOUSEBUTTONDOWN)
+
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -426,7 +460,7 @@ while running:
                 if game_mode == "2player":
                     if 150 < mx < 450 and 180 < my < 220:
                         active_input = "black"
-                    elif 150 < mx < 450 and 290 < my < 330:
+                    elif 150 < mx < 450 and 300 < my < 340:
                         active_input = "red"
                     elif 200 < mx < 400 and 400 < my < 440:
                         if name_black.strip() and name_red.strip():
