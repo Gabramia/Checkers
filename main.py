@@ -55,63 +55,6 @@ clock = pygame.time.Clock()
 while running:
     dt = clock.tick(60)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        elif event.type == pygame.KEYDOWN and state == NAME_INPUT:
-            if active_input == "black":
-                if event.key == pygame.K_BACKSPACE:
-                    name_black = name_black[:-1]
-                else:
-                    name_black += event.unicode
-            elif active_input == "red":
-                if event.key == pygame.K_BACKSPACE:
-                    name_red = name_red[:-1]
-                else:
-                    name_red += event.unicode
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if state == GAME:
-                if game_mode == "2player" or board.turn == player_color:
-                    last_selected = board.selected_square
-                    board.handle_click(event.pos, game_mode, player_color)
-                    if recorder and last_selected and not board.selected_square:
-                        target = board.get_square_under_mouse(event.pos, game_mode, player_color)
-                        if target:
-                            recorder.record_move(last_selected, target)
-            elif state == NAME_INPUT:
-                mx, my = pygame.mouse.get_pos()
-                if game_mode == "2player":
-                    if 150 < mx < 450 and 180 < my < 220:
-                        active_input = "black"
-                    elif 150 < mx < 450 and 290 < my < 330:
-                        active_input = "red"
-                    elif 200 < mx < 400 and 400 < my < 440:
-                        if name_black.strip() and name_red.strip():
-                            board = Board()
-                            recorder = MatchRecorder()
-                            recorder.set_players(name_black, name_red)
-                            state = GAME
-                else:
-                    if 150 < mx < 450 and 200 < my < 240:
-                        active_input = "black"
-                    elif name_black.strip():
-                        if btn_red.draw(screen):
-                            player_color = "red"
-                            board = Board()
-                            board.turn = "black"
-                            game_mode = selected_mode
-                            recorder = MatchRecorder()
-                            recorder.set_players(name_black, "BOT")
-                            state = GAME
-                        elif btn_black.draw(screen):
-                            player_color = "black"
-                            board = Board()
-                            board.turn = "black"
-                            game_mode = selected_mode
-                            recorder = MatchRecorder()
-                            recorder.set_players(name_black, "BOT")
-                            state = GAME
-
     screen.fill((255, 255, 255))
 
     if state == MENU:
@@ -142,7 +85,7 @@ while running:
 
             red_label = input_font.render("RED:", True, (0, 0, 0))
             screen.blit(red_label, (150, 270))
-            pygame.draw.rect(screen, (255, 255, 255), (150, 290, 300, 40))
+            pygame.draw.rect(screen, (255, 255, 255), (150, 300, 300, 40))
             screen.blit(input_font.render(name_red, True, (0, 0, 0)), (155, 300))
 
             pygame.draw.rect(screen, (0, 200, 0), (200, 400, 200, 40))
@@ -154,8 +97,26 @@ while running:
             pygame.draw.rect(screen, (255, 255, 255), (150, 200, 300, 40))
             screen.blit(input_font.render(name_black, True, (0, 0, 0)), (155, 210))
             screen.blit(input_font.render("CHOOSE SIDE", True, (0, 0, 0)), (200, 290))
-            btn_red.draw(screen)
-            btn_black.draw(screen)
+
+            red_clicked = btn_red.draw(screen)
+            black_clicked = btn_black.draw(screen)
+            if name_black.strip():
+                if red_clicked:
+                    player_color = "red"
+                    board = Board()
+                    board.turn = "black"
+                    game_mode = selected_mode
+                    recorder = MatchRecorder()
+                    recorder.set_players(name_black, "BOT")
+                    state = GAME
+                elif black_clicked:
+                    player_color = "black"
+                    board = Board()
+                    board.turn = "black"
+                    game_mode = selected_mode
+                    recorder = MatchRecorder()
+                    recorder.set_players(name_black, "BOT")
+                    state = GAME
 
     elif state == GAME:
         flip = (game_mode == '2player' and board.turn == 'red') or (game_mode in ('easy', 'hard') and player_color == 'red')
@@ -199,6 +160,46 @@ while running:
         name_black = ""
         name_red = ""
         active_input = None
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN and state == NAME_INPUT:
+            if active_input == "black":
+                if event.key == pygame.K_BACKSPACE:
+                    name_black = name_black[:-1]
+                else:
+                    name_black += event.unicode
+            elif active_input == "red":
+                if event.key == pygame.K_BACKSPACE:
+                    name_red = name_red[:-1]
+                else:
+                    name_red += event.unicode
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if state == GAME:
+                if game_mode == "2player" or board.turn == player_color:
+                    last_selected = board.selected_square
+                    board.handle_click(event.pos, game_mode, player_color)
+                    if recorder and last_selected and not board.selected_square:
+                        target = board.get_square_under_mouse(event.pos, game_mode, player_color)
+                        if target:
+                            recorder.record_move(last_selected, target)
+            elif state == NAME_INPUT:
+                mx, my = pygame.mouse.get_pos()
+                if game_mode == "2player":
+                    if 150 < mx < 450 and 180 < my < 220:
+                        active_input = "black"
+                    elif 150 < mx < 450 and 290 < my < 330:
+                        active_input = "red"
+                    elif 200 < mx < 400 and 400 < my < 440:
+                        if name_black.strip() and name_red.strip():
+                            board = Board()
+                            recorder = MatchRecorder()
+                            recorder.set_players(name_black, name_red)
+                            state = GAME
+                else:
+                    if 150 < mx < 450 and 200 < my < 240:
+                        active_input = "black"
 
     pygame.display.flip()
 
