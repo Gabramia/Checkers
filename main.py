@@ -142,15 +142,16 @@ while running:
                     board.turn = "black"
                     game_mode = selected_mode
                     recorder = MatchRecorder()
-                    recorder.set_players(name_black, selected_mode.upper())
+                    recorder.set_players("BOT", name_black)  # BOT = black, player = red
                     state = GAME
+
                 elif black_clicked:
                     player_color = "black"
                     board = Board()
                     board.turn = "black"
                     game_mode = selected_mode
                     recorder = MatchRecorder()
-                    recorder.set_players(name_black, "BOT")
+                    recorder.set_players(name_black, "BOT")  # player = black, BOT = red
                     state = GAME
 
     elif state == GAME:
@@ -232,33 +233,43 @@ while running:
             with open(os.path.join("replays", file), "r") as f:
                 data = json.load(f)
 
-            black = data["player_black"]
-            if black.upper() == "BOT":
-                black = "EASY" if "easy" in file.lower() else "HARD"
-            red = data["player_red"]
-            if red.upper() == "BOT":
-                red = "EASY" if "easy" in file.lower() else "HARD"
-            winner = data["winner"]
-            date = file.split("_")[0] + " " + file.split("_")[1].replace("-", ":")
+            # Assign players to correct sides (based on who is BOT)
+            if data["player_red"].upper() == "BOT":
+                player_black = data["player_red"]
+                player_red = data["player_black"]
+            else:
+                player_black = data["player_black"]
+                player_red = data["player_red"]
 
+            # Format labels for display
+            label_black = "EASY" if player_black.upper() == "BOT" and "easy" in file.lower() else (
+                        "HARD" if player_black.upper() == "BOT" else player_black)
+
+            label_red = "EASY" if player_red.upper() == "BOT" and "easy" in file.lower() else (
+                        "HARD" if player_red.upper() == "BOT" else player_red)
+
+            # Draw white box
             y_offset = top_margin + i * (box_height + vertical_gap)
             pygame.draw.rect(screen, (255, 255, 255), (70, y_offset, 460, box_height))
 
-            # Black Side (Left)
-            screen.blit(black_king_icon, (80, y_offset + 10))
-            screen.blit(input_font.render(black, True, (0, 0, 0)), (90, y_offset + 75))  # 10px inside box edge
+            # Black side (left)
+            screen.blit(black_king_icon, (80, y_offset + 15))
+            screen.blit(input_font.render(label_black, True, (0, 0, 0)), (80, y_offset + 75))
 
-            # Red Side (Right)
-            red_icon_x = 460
-            red_text_x = 470 + 50 - input_font.size(red)[0]  # So name ends before box edge
-            screen.blit(red_king_icon, (red_icon_x, y_offset + 10))
-            screen.blit(input_font.render(red, True, (0, 0, 0)), (red_text_x, y_offset + 75))
+            # Red side (right)
+            screen.blit(red_king_icon, (460, y_offset + 15))
+            red_name_surface = input_font.render(label_red, True, (0, 0, 0))
+            red_name_x = 520 - red_name_surface.get_width()
+            screen.blit(red_name_surface, (red_name_x, y_offset + 75))
 
             # Center info
+            winner = data["winner"]
+            date = file.split("_")[0] + " " + file.split("_")[1].replace("-", ":")
             screen.blit(input_font.render(date, True, (0, 0, 0)), (230, y_offset + 10))
             screen.blit(input_font.render("Winner is:", True, (0, 0, 0)), (245, y_offset + 40))
             winner_font = pygame.font.SysFont("arial", 28, bold=True)
             screen.blit(winner_font.render(winner.upper(), True, (0, 0, 0)), (245, y_offset + 65))
+
 
         # Arrows and Page Number
         if btn_replay_left.draw(screen):
