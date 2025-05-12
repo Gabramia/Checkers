@@ -442,16 +442,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if state == REPLAY_VIEWER:
-                if btn_step_forward.rect.collidepoint(event.pos):
-                    if replay_index < len(replay_data.get("states", [])) - 1:
-                        replay_index += 1
-                        load_replay_state_at(replay_index)
-                elif btn_step_back.rect.collidepoint(event.pos):
-                    if replay_index > 0:
-                        replay_index -= 1
-                        load_replay_state_at(replay_index)
 
         elif event.type == pygame.KEYDOWN and state == NAME_INPUT:
             if active_input == "black":
@@ -477,9 +467,16 @@ while running:
                             if game_mode == "2player":
                                 pending_flip = True
                                 flip_pause_timer = FLIP_PAUSE_MS
-                            target = board.get_square_under_mouse(event.pos, game_mode, player_color)
-                            if target:
-                                recorder.record_state(board)
+            elif state == REPLAY_VIEWER:
+                if btn_step_forward.rect.collidepoint(event.pos):
+                    if replay_index < len(replay_data.get("states", [])) - 1:
+                        replay_index += 1
+                        load_replay_state_at(replay_index)
+                elif btn_step_back.rect.collidepoint(event.pos):
+                    if replay_index > 0:
+                        replay_index -= 1
+                        load_replay_state_at(replay_index)
+
 
             elif state == NAME_INPUT:
                 mx, my = pygame.mouse.get_pos()
