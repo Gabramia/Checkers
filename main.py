@@ -78,8 +78,10 @@ def load_replay_state_at(index):
     global board
     states = replay_data.get("states", [])
     if 0 <= index < len(states):
-        snapshot = states[index]
+        snapshot_data = states[index]
+        snapshot = snapshot_data["board"]  # <-- now inside a dict
         board.board = []
+
         for row in snapshot:
             new_row = []
             for cell in row:
@@ -94,9 +96,12 @@ def load_replay_state_at(index):
         while len(board.board) < 8:
             board.board.append([None] * 8)
 
+        board.turn = snapshot_data.get("turn", "black")  # <-- restore turn info
+
     board.selected_square = None
     board.valid_moves = []
     board.valid_jump_paths = []
+
 
 
 
@@ -385,15 +390,11 @@ while running:
         btn_step_back.rect.center = (270, 20)
         btn_step_forward.rect.center = (330, 20)
 
-        if btn_step_back.draw(screen):
-            if replay_index > 0:
-                replay_index -= 1
-                load_replay_state_at(replay_index)  # ✅ Update immediately
+        btn_step_back.draw(screen)
+        load_replay_state_at(replay_index)  # ✅ Update immediately
 
-        if btn_step_forward.draw(screen):
-            if replay_index < len(replay_data.get("states", [])) - 1:
-                replay_index += 1
-                load_replay_state_at(replay_index)  # ✅ Update immediately
+        btn_step_forward.draw(screen)
+        load_replay_state_at(replay_index)  # ✅ Update immediately
 
 
 
@@ -469,13 +470,20 @@ while running:
                                 flip_pause_timer = FLIP_PAUSE_MS
             elif state == REPLAY_VIEWER:
                 if btn_step_forward.rect.collidepoint(event.pos):
-                    if replay_index < len(replay_data.get("states", [])) - 1:
+                    current_turn = replay_data["states"][replay_index]["turn"]
+                    while replay_index + 1 < len(replay_data["states"]):
                         replay_index += 1
-                        load_replay_state_at(replay_index)
+                        if replay_data["states"][replay_index]["turn"] != current_turn:
+                            break
+                    load_replay_state_at(replay_index)
+
                 elif btn_step_back.rect.collidepoint(event.pos):
-                    if replay_index > 0:
+                    current_turn = replay_data["states"][replay_index]["turn"]
+                    while replay_index - 1 >= 0:
                         replay_index -= 1
-                        load_replay_state_at(replay_index)
+                        if replay_data["states"][replay_index]["turn"] != current_turn:
+                            break
+                    load_replay_state_at(replay_index)
 
 
             elif state == NAME_INPUT:

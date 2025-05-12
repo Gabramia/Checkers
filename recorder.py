@@ -24,7 +24,12 @@ class MatchRecorder:
                 else:
                     row_data.append(None)
             snapshot.append(row_data)
-        self.states.append(snapshot)
+
+        self.states.append({
+            "board": snapshot,
+            "turn": board.turn  # <-- add this!
+        })
+
 
     def set_winner(self, winner_color):
         self.winner = winner_color
