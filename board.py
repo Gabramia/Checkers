@@ -22,12 +22,19 @@ class Board:
         self._place_pieces()
 
 
-        
+    def unflip_pos(self, pos, game_mode=None, player_color=None):
+        row, col = self.pos_to_index(pos, flip_board=True)
+        return self.index_to_pos(row, col)
 
-    def pos_to_index(self, pos):
+
+    def pos_to_index(self, pos, flip_board=False):
         col = ord(pos[0].upper()) - ord('A')
         row = 8 - int(pos[1])
+        if flip_board:
+            row = 7 - row
+            col = 7 - col
         return row, col
+
 
     def index_to_pos(self, row, col):
         return chr(col + ord('A')) + str(8 - row)

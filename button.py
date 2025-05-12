@@ -12,6 +12,7 @@ class Button:
         self.image = self.images["normal"]
         self.rect = self.image.get_rect(center=pos)
         self.clicked = False
+        
 
     def draw(self, screen):
         mouse = pygame.mouse.get_pos()
