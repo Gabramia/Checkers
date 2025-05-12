@@ -46,6 +46,8 @@ flip_pause_timer = 0
 FLIP_PAUSE_MS = 300
 pending_flip = False
 replay_flip_board = False
+is_first_move = True
+
 
 name_black = ""
 name_red = ""
@@ -228,13 +230,19 @@ while running:
             else:
                 bot_delay_timer += dt
                 if bot_delay_timer >= BOT_DELAY_MS:
-                    start_pos = board.selected_square
+                    if not is_first_move and recorder:
+                        recorder.record_state(board)  # ✅ record player move before bot
+
                     make_bot_move(board, game_mode)
-                    end_pos = board.selected_square
-                    if recorder and start_pos and not end_pos:
-                        end_square = board.valid_moves[0]
-                        recorder.record_state(board)
+
+                    if recorder:
+                        recorder.record_state(board)  # ✅ record bot move
+
+                    is_first_move = False  # ✅ Mark that the first move (whoever made it) is done
+
                     waiting_for_bot = False
+
+                    
         screen.blit(back_label, back_rect)
         if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
             state = MENU
@@ -467,6 +475,9 @@ while running:
                             if game_mode == "2player":
                                 pending_flip = True
                                 flip_pause_timer = FLIP_PAUSE_MS
+                            elif game_mode in ("easy", "hard"):      # ✅ Only in bot mode
+                                is_first_move = False              # ✅ Mark first move done
+            
             elif state == REPLAY_VIEWER:
                 if btn_step_forward.rect.collidepoint(event.pos):
                     if replay_index + 1 < len(replay_data["states"]):

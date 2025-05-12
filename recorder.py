@@ -25,9 +25,15 @@ class MatchRecorder:
                     row_data.append(None)
             snapshot.append(row_data)
 
+        # Check if it's the same as the last state
+        if self.states:
+            last_snapshot = self.states[-1]["board"]
+            if snapshot == last_snapshot:
+                return  # Don't save duplicate
+
         self.states.append({
             "board": snapshot,
-            "turn": board.turn  # <-- add this!
+            "turn": board.turn
         })
 
 
