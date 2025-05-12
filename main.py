@@ -4,6 +4,8 @@ from board import Board
 from button import Button
 from bot import make_bot_move
 from recorder import MatchRecorder
+from piece import Piece
+
 
 # Initialize Pygame
 pygame.init()
@@ -70,6 +72,37 @@ board = None
 winner = None
 recorder = None
 last_selected = None
+
+#helper function
+def load_replay_state_at(index):
+    global board
+    states = replay_data.get("states", [])
+    if 0 <= index < len(states):
+        snapshot = states[index]
+        board.board = []
+        for row in snapshot:
+            new_row = []
+            for cell in row:
+                if cell is None:
+                    new_row.append(None)
+                else:
+                    kind, color = cell.split("-")
+                    new_row.append(Piece(color, is_king=(kind == "K")))
+            while len(new_row) < 8:
+                new_row.append(None)
+            board.board.append(new_row)
+        while len(board.board) < 8:
+            board.board.append([None] * 8)
+
+    board.selected_square = None
+    board.valid_moves = []
+    board.valid_jump_paths = []
+
+
+
+
+
+
 
 # Main loop
 running = True
@@ -150,6 +183,7 @@ while running:
                     game_mode = selected_mode
                     recorder = MatchRecorder()
                     recorder.set_players("BOT", name_black)  # BOT = black, player = red
+                    recorder.record_state(board)
                     state = GAME
 
                 elif black_clicked:
@@ -159,6 +193,7 @@ while running:
                     game_mode = selected_mode
                     recorder = MatchRecorder()
                     recorder.set_players(name_black, "BOT")  # player = black, BOT = red
+                    recorder.record_state(board)
                     state = GAME
 
     elif state == GAME:
@@ -187,12 +222,12 @@ while running:
             else:
                 bot_delay_timer += dt
                 if bot_delay_timer >= BOT_DELAY_MS:
-                    before = board.selected_square
+                    start_pos = board.selected_square
                     make_bot_move(board, game_mode)
-                    after = board.selected_square
-                    if recorder and before and not after:
+                    end_pos = board.selected_square
+                    if recorder and start_pos and not end_pos:
                         end_square = board.valid_moves[0]
-                        recorder.record_move(before, end_square)
+                        recorder.record_state(board)
                     waiting_for_bot = False
         screen.blit(back_label, back_rect)
         if pygame.mouse.get_pressed()[0] and back_rect.collidepoint(pygame.mouse.get_pos()):
@@ -293,6 +328,7 @@ while running:
                 replay_index = 0
                 last_replay_page = replay_page
                 board = Board()
+                load_replay_state_at(replay_index)
                 board.turn = "black"  # default starting turn
                 state = REPLAY_VIEWER
                 pygame.time.wait(150)  # prevent double click spam
@@ -310,46 +346,18 @@ while running:
         screen.blit(page_label, (240, 570))
 
 
-
     elif state == REPLAY_VIEWER:
-        board = Board()
-        unique_moves = []
-        for move in replay_data["moves"]:
-            if not unique_moves or unique_moves[-1] != move:
-                unique_moves.append(move)
+        screen.blit(pygame.transform.scale(bg_img, (600, 600)), (0, 0))
 
-        # Apply moves up to current index
-        for i in range(replay_index):
-            move = unique_moves[i]
-            start, end = move.split("-")
-            sr, sc = board.pos_to_index(start, flip_board=replay_flip_board)
-            er, ec = board.pos_to_index(end, flip_board=replay_flip_board)
+        try:
+            # draw current board
+            board.draw(screen, game_mode="replay", flip_board=replay_flip_board)
 
-            piece = board.board[sr][sc]
-            if not piece:
-                continue
-
-            board.board[sr][sc] = None
-
-            # Handle jump
-            if abs(sr - er) == 2:
-                mid_r = (sr + er) // 2
-                mid_c = (sc + ec) // 2
-                board.board[mid_r][mid_c] = None
-
-            board.board[er][ec] = piece
-
-            if piece.color == "red" and er == 7:
-                piece.make_king()
-            elif piece.color == "black" and er == 0:
-                piece.make_king()
-
-        board.selected_square = None
-        board.valid_moves = []
-        board.valid_jump_paths = []
-
-        # Draw the board
-        board.draw(screen, game_mode="replay", flip_board=replay_flip_board)
+        except Exception as e:
+            print("[REPLAY ERROR]", e)
+            state = MENU
+            pygame.display.flip()
+            continue
 
         # MENU (top-left)
         menu_label = input_font.render("MENU", True, (0, 0, 0))
@@ -357,6 +365,7 @@ while running:
         screen.blit(menu_label, menu_rect)
         if pygame.mouse.get_pressed()[0] and menu_rect.collidepoint(pygame.mouse.get_pos()):
             state = MENU
+            pygame.display.flip()
             continue
 
         # BACK (top-right)
@@ -369,19 +378,24 @@ while running:
             just_entered_history = True
             pygame.event.clear(pygame.MOUSEBUTTONDOWN)
             pygame.time.wait(100)
+            pygame.display.flip()
             continue
 
-        # Reposition and draw scaled arrows at top center (no space from edge)
+        # Replay Step Arrows
         btn_step_back.rect.center = (270, 20)
         btn_step_forward.rect.center = (330, 20)
 
         if btn_step_back.draw(screen):
             if replay_index > 0:
                 replay_index -= 1
+                load_replay_state_at(replay_index)  # ✅ Update immediately
 
         if btn_step_forward.draw(screen):
-            if replay_index < len(unique_moves):
+            if replay_index < len(replay_data.get("states", [])) - 1:
                 replay_index += 1
+                load_replay_state_at(replay_index)  # ✅ Update immediately
+
+
 
 
 
@@ -420,12 +434,15 @@ while running:
             replay_data = None
             recorder = None
             pygame.event.clear(pygame.MOUSEBUTTONDOWN)
+            pygame.time.wait(100)
+
 
 
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+
         elif event.type == pygame.KEYDOWN and state == NAME_INPUT:
             if active_input == "black":
                 if event.key == pygame.K_BACKSPACE:
@@ -437,6 +454,7 @@ while running:
                     name_red = name_red[:-1]
                 else:
                     name_red += event.unicode
+
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if state == GAME:
                 if game_mode == "2player" or board.turn == player_color:
@@ -445,16 +463,14 @@ while running:
                     if recorder and last_selected and not board.selected_square:
                         target = board.get_square_under_mouse(event.pos, game_mode, player_color)
                         if target and target != last_selected:
-                            # Normalize positions to black-bottom orientation
-                            unflipped_start = board.unflip_pos(last_selected, game_mode, player_color)
-                            unflipped_end = board.unflip_pos(target, game_mode, player_color)
-                            recorder.record_move(unflipped_start, unflipped_end)
+                            recorder.record_state(board)
                             if game_mode == "2player":
                                 pending_flip = True
                                 flip_pause_timer = FLIP_PAUSE_MS
                             target = board.get_square_under_mouse(event.pos, game_mode, player_color)
                             if target:
-                                    recorder.record_move(last_selected, target)
+                                recorder.record_state(board)
+
             elif state == NAME_INPUT:
                 mx, my = pygame.mouse.get_pos()
                 if game_mode == "2player":
@@ -467,6 +483,7 @@ while running:
                             board = Board()
                             recorder = MatchRecorder()
                             recorder.set_players(name_black, name_red)
+                            recorder.record_state(board)  # Save initial state
                             state = GAME
                 else:
                     if 150 < mx < 450 and 200 < my < 240:

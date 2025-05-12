@@ -4,7 +4,7 @@ from datetime import datetime
 
 class MatchRecorder:
     def __init__(self):
-        self.moves = []
+        self.states = []
         self.player_black = None
         self.player_red = None
         self.winner = None
@@ -13,11 +13,18 @@ class MatchRecorder:
         self.player_black = black
         self.player_red = red
 
-    def record_move(self, start_pos, end_pos):
-        move = f"{start_pos}-{end_pos}"
-        if not self.moves or self.moves[-1] != move:
-            self.moves.append(move)
-
+    def record_state(self, board):
+        snapshot = []
+        for row in board.board:
+            row_data = []
+            for piece in row:
+                if piece:
+                    prefix = "K" if piece.is_king else "P"
+                    row_data.append(f"{prefix}-{piece.color}")
+                else:
+                    row_data.append(None)
+            snapshot.append(row_data)
+        self.states.append(snapshot)
 
     def set_winner(self, winner_color):
         self.winner = winner_color
@@ -25,18 +32,14 @@ class MatchRecorder:
     def save_to_file(self):
         if not os.path.exists("replays"):
             os.makedirs("replays")
-
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         filename = f"replays/{timestamp}_{self.player_black}_vs_{self.player_red}.json"
-
         data = {
             "player_black": self.player_black,
             "player_red": self.player_red,
-            "moves": self.moves,
+            "states": self.states,
             "winner": self.winner
         }
-
         with open(filename, "w") as f:
             json.dump(data, f, indent=2)
-
         print(f"[Recorder] Saved replay to {filename}")
