@@ -76,37 +76,38 @@ last_selected = None
 #helper function
 def load_replay_state_at(index):
     global board
-    states = replay_data.get("states", [])
-    if 0 <= index < len(states):
-        snapshot_data = states[index]
-        snapshot = snapshot_data["board"]  # <-- now inside a dict
-        board.board = []
+    if not replay_data or "states" not in replay_data:
+        return
+        
+    states = replay_data["states"]
+    if not (0 <= index < len(states)):
+        return
+        
+    snapshot_data = states[index]
+    if "board" not in snapshot_data:
+        return
+        
+    snapshot = snapshot_data["board"]
+    board.board = []
 
-        for row in snapshot:
-            new_row = []
-            for cell in row:
-                if cell is None:
-                    new_row.append(None)
-                else:
-                    kind, color = cell.split("-")
-                    new_row.append(Piece(color, is_king=(kind == "K")))
-            while len(new_row) < 8:
-                new_row.append(None)
-            board.board.append(new_row)
-        while len(board.board) < 8:
-            board.board.append([None] * 8)
+    # Clear the board first
+    for _ in range(8):
+        board.board.append([None] * 8)
 
-        board.turn = snapshot_data.get("turn", "black")  # <-- restore turn info
+    # Load the new state
+    for row_idx, row in enumerate(snapshot):
+        for col_idx, cell in enumerate(row):
+            if cell is None:
+                board.board[row_idx][col_idx] = None
+            else:
+                kind, color = cell.split("-")
+                board.board[row_idx][col_idx] = Piece(color, is_king=(kind == "K"))
 
+    # Reset board state
     board.selected_square = None
     board.valid_moves = []
     board.valid_jump_paths = []
-
-
-
-
-
-
+    board.turn = snapshot_data.get("turn", "black")
 
 
 # Main loop
@@ -391,10 +392,8 @@ while running:
         btn_step_forward.rect.center = (330, 20)
 
         btn_step_back.draw(screen)
-        load_replay_state_at(replay_index)  # ✅ Update immediately
 
         btn_step_forward.draw(screen)
-        load_replay_state_at(replay_index)  # ✅ Update immediately
 
 
 
@@ -470,20 +469,14 @@ while running:
                                 flip_pause_timer = FLIP_PAUSE_MS
             elif state == REPLAY_VIEWER:
                 if btn_step_forward.rect.collidepoint(event.pos):
-                    current_turn = replay_data["states"][replay_index]["turn"]
-                    while replay_index + 1 < len(replay_data["states"]):
+                    if replay_index + 1 < len(replay_data["states"]):
                         replay_index += 1
-                        if replay_data["states"][replay_index]["turn"] != current_turn:
-                            break
-                    load_replay_state_at(replay_index)
+                        load_replay_state_at(replay_index)
 
                 elif btn_step_back.rect.collidepoint(event.pos):
-                    current_turn = replay_data["states"][replay_index]["turn"]
-                    while replay_index - 1 >= 0:
+                    if replay_index - 1 >= 0:
                         replay_index -= 1
-                        if replay_data["states"][replay_index]["turn"] != current_turn:
-                            break
-                    load_replay_state_at(replay_index)
+                        load_replay_state_at(replay_index)
 
 
             elif state == NAME_INPUT:
